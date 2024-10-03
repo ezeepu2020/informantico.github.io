@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Publicaciones</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0; /* Fondo gris claro */
+            color: #12ac38; /* Color de texto oscuro */
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            max-width: 1200px;
+        }
+        .main-title {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+        .post-section, .post {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ff0000;
+            border-radius: 10px;
+            position: relative;
+            background-color: #706666; /* Fondo blanco para contraste */
+        }
+        .post {
+            padding-top: 40px; /* Espacio para el botón de eliminar */
+        }
+        .section-title {
+            font-size: 24px;
+            color: #eeea0e;
+        }
+        .input-area, .comment-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ff55;
+            border-radius: 5px;
+            background-color: #00ffd5; /* Fondo blanco */
+            color: #333; /* Color de texto oscuro */
+        }
+        .input-area::placeholder, .comment-input::placeholder {
+            color: #777; /* Color de placeholder más oscuro */
+        }
+        .submit-button, .comment-button {
+            background-color: #4CAF50;
+            color: rgb(11, 78, 22);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .submit-button:hover, .comment-button:hover {
+            background-color: #45a049;
+        }
+        .file-input {
+            margin-top: 10px;
+        }
+
+        /* Estilo del botón de eliminar (X) */
+        .delete-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #3d3a3a;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            text-align: center;
+            line-height: 30px;
+        }
+        .delete-button:hover {
+            background-color: #585353;
+        }
+
+        /* Estilo de la sección de comentarios */
+        .comments-section {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .comment {
+            padding: 10px;
+            background-color: #f1f1f1; /* Fondo claro para comentarios */
+            margin-top: 5px;
+            border-radius: 5px;
+            color: #333; /* Color de texto oscuro */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="main-title">Panel de Publicaciones</h1>
+
+        <!-- Sección para Administrador -->
+        <div id="adminPostSection" class="post-section" style="display: none;">
+            <h2 class="section-title">Crear Publicación</h2>
+            <textarea id="postContent" placeholder="Escribe algo..." class="input-area"></textarea>
+            <input type="file" id="uploadImage" accept="image/*" class="file-input">
+            <img id="previewImage" style="display: none;" width="200px" alt="Vista previa de la imagen">
+            <button id="publishButton" class="submit-button">Publicar</button>
+        </div>
+
+        <!-- Sección de publicaciones -->
+        <div id="postSection">
+            <h2 class="section-title">Publicaciones Recientes</h2>
+            <div id="postsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar publicaciones desde localStorage
+        const savedPosts = JSON.parse(localStorage.getItem('posts')) || [];
+        const postsContainer = document.getElementById('postsContainer');
+        const role = localStorage.getItem('role');
+
+        // Mostrar sección de publicación si es administrador
+        if (role === 'admin') {
+            document.getElementById('adminPostSection').style.display = 'block';
+        }
+
+        // Mostrar publicaciones guardadas
+        function renderPosts() {
+            postsContainer.innerHTML = '';  // Limpiar contenedor
+            savedPosts.forEach((post, index) => {
+                // Verificar si la propiedad 'comments' está definida, si no lo está, inicializarla como un arreglo vacío
+                if (!post.comments) {
+                    post.comments = [];
+                }
+
+                const postDiv = document.createElement('div');
+                postDiv.classList.add('post');
+                postDiv.innerHTML = `
+                    ${role === 'admin' ? `<button class="delete-button" data-post-index="${index}">X</button>` : ''}
+                    <p>${post.content}</p>
+                    ${post.imageSrc ? `<img src="${post.imageSrc}" alt="Imagen subida" width="200px">` : ''}
+                    <div class="comments-section">
+                        <h3>Comentarios</h3>
+                        <textarea id="commentInput-${index}" placeholder="Escribe un comentario..." class="comment-input"></textarea>
+                        <button class="comment-button" data-post-index="${index}">Comentar</button>
+                        <div id="comments-${index}" class="comments">
+                            ${post.comments.map(comment => `<div class="comment"><p>${comment}</p></div>`).join('')}
+                        </div>
+                    </div>
+                `;
+                postsContainer.prepend(postDiv);
+            });
+        }
+
+        renderPosts();  // Cargar publicaciones al inicio
+
+        // Subida de imagen y vista previa
+        const uploadImage = document.getElementById('uploadImage');
+        const previewImage = document.getElementById('previewImage');
+
+        uploadImage.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Publicar nueva entrada
+        document.getElementById('publishButton').addEventListener('click', function() {
+            const postContent = document.getElementById('postContent').value;
+            const imageSrc = previewImage.src;
+
+            if (postContent.trim() === '') {
+                alert('Por favor, escribe algo para publicar.');
+                return;
+            }
+
+            // Crear nuevo post
+            const newPost = { content: postContent, imageSrc: imageSrc || '', comments: [] };
+            savedPosts.push(newPost);
+            localStorage.setItem('posts', JSON.stringify(savedPosts));  // Guardar en localStorage
+
+            renderPosts();  // Volver a cargar las publicaciones
+
+            // Limpiar campos
+            document.getElementById('postContent').value = '';
+            previewImage.style.display = 'none';
+            uploadImage.value = ''; // Reiniciar el campo de archivo
+        });
+
+        // Manejar el evento de eliminar publicación
+        postsContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-button')) {
+                const postIndex = event.target.getAttribute('data-post-index');
+                savedPosts.splice(postIndex, 1);  // Eliminar publicación
+                localStorage.setItem('posts', JSON.stringify(savedPosts));  // Actualizar localStorage
+                renderPosts();  // Volver a cargar las publicaciones
+            }
+        });
+
+        // Manejar el evento de comentar
+        postsContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('comment-button')) {
+                const postIndex = event.target.getAttribute('data-post-index');
+                const commentInput = document.getElementById(`commentInput-${postIndex}`);
+                const commentText = commentInput.value.trim();
+                
+                if (commentText === '') {
+                    alert('Por favor, escribe un comentario.');
+                    return;
+                }
+
+                // Agregar comentario
+                savedPosts[postIndex].comments.push(commentText);
+                localStorage.setItem('posts', JSON.stringify(savedPosts));  // Actualizar en localStorage
+                renderPosts();  // Volver a cargar las publicaciones
+
+                // Limpiar el campo de comentario
+                commentInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
